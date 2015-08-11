@@ -28,3 +28,8 @@ d-body
 
 (get-in d-body [:attrs :termsofuse])
 
+(def z-dm (xml-zip d-body))
+
+(xml-> z-dm)
+
+z-dm
