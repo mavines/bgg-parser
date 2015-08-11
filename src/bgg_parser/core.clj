@@ -10,26 +10,32 @@
          '[clojure.pprint :as print])
 
 (defonce die-macher (client/get "http://www.boardgamegeek.com/xmlapi2/thing?id=1,type=boardgame" {:as :byte-array }))
-
-(defn zip-str [s]
-  (c-zip/xml-zip
-   (c-xml/parse (java.io.ByteArrayInputStream. (.getBytes s)))))
-
-(def dm-tree (c-zip/xml-zip (c-xml/parse (java.io.ByteArrayInputStream. (:body die-macher)))))
-
-
-(print/pprint (c-xml/parse (java.io.ByteArrayInputStream. (:body die-macher))))
-
-
-(print/pprint dm-tree)
-
+(defonce games (client/get "http://www.boardgamegeek.com/xmlapi2/thing?id=1,2,type=boardgame" {:as :byte-array }))
 (def d-body (c-xml/parse (java.io.ByteArrayInputStream. (:body die-macher))))
-d-body
+(def games-body (parse (java.io.ByteArrayInputStream. (:body games))))
 
-(get-in d-body [:attrs :termsofuse])
+(defn game->map [z-game]
+    {:name (xml1-> z-game :name (attr :value))
+     :id (xml1-> z-game (attr :id))
+     :thumbnail (xml1-> z-game :thumbnail text)
+     :image (xml1-> z-game :image text)
+     :description (xml1-> z-game :description text)
+     :yearpublished (xml1-> z-game :yearpublished (attr :value))
+     :minplayers (xml1-> z-game :minplayers (attr :value))
+     :maxplayers (xml1-> z-game :maxplayers (attr :value))
+     :suggested-players (xml-> z-game :poll (filter #(attr= :name "suggested_numplayers")))
+     })
+
 
 (def z-dm (xml-zip d-body))
+(print/pprint (game->map (c-zip/down z-dm)))
+(defn build-players [results]
+  {:numplayers (xml1-> results (attr :numplayers))
+   :best (xml1-> results :result (attr= :value "Best") (attr :numvotes))
+   :recommended (xml1-> results :result (attr= :value "Recommended") (attr :numvotes))
+   :not-recommended (xml1-> results :result (attr= :value "Not Recommended") (attr :numvotes))
+  })
 
-(xml-> z-dm)
+(print/pprint (xml-> (c-zip/down z-dm) :poll (attr= :name "suggested_numplayers") :results build-players))
+(def zip-games (xml-zip games-body))
 
-z-dm
